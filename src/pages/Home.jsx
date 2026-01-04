@@ -1,5 +1,7 @@
+
 export default function Home() {
   return (
+    
     <div className="bg-gray-50 min-h-screen">
       {/* HERO SECTION */}
       <section className="bg-blue-600 text-white py-20">

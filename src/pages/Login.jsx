@@ -1,8 +1,12 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { loginUser, checkIsAdmin } from "../api/authApi";
+import { useAuth } from "../context/AuthContext";
+import { jwtDecode } from "jwt-decode";
 
 export default function Login() {
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const [form, setForm] = useState({
     email: "",
@@ -12,7 +16,7 @@ export default function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-const handleSubmit = async (e) => {
+  const handleSubmit = async (e) => {
   e.preventDefault();
 
   if (!form.email || !form.password) {
@@ -20,37 +24,42 @@ const handleSubmit = async (e) => {
     return;
   }
 
-  try {
-    setLoading(true);
-    setError("");
+  setLoading(true);
+  setError("");
 
+  try {
     const response = await loginUser({
       email: form.email,
       password: form.password,
     });
 
-    console.log("Login response:", response.data);
-
-    if (!response.data.success) {
-        console.log(response.data)
-      setError(response.data.message || "Login failed");
+    if (!response?.data?.success) {
+      setError(response?.data?.message || "Login failed");
       return;
     }
 
-    // ✅ SUCCESS
+    // 1️⃣ TOKEN
     const token = response.data.data;
 
-    // Store token
-    localStorage.setItem("token", token);
+    // 2️⃣ SAVE TOKEN
+    await login(token);
 
-    console.log("JWT stored:", token);
+    // 3️⃣ DECODE JWT
+    const decoded = jwtDecode(token);
+    console.log("DECODED JWT 👉", decoded);
 
-    navigate("/"); // redirect to home or dashboard
+    // 4️⃣ CHECK ROLE
+    const res = await checkIsAdmin(decoded.id);
+    console.log("ROLE RESPONSE 👉", res.data);
 
+    if (res.data.success && res.data.data === "ADMIN") {
+      navigate("/admin", { replace: true });
+    } else {
+      navigate("/customer", { replace: true });
+    }
   } catch (err) {
-     console.log("Full backend error:", err.response?.data, err.response.data.message);
-    console.log("Login error:", err);
-    setError("Something went wrong");
+    console.error("LOGIN ERROR 👉", err);
+    setError("Something went wrong during login");
   } finally {
     setLoading(false);
   }
@@ -86,8 +95,7 @@ const handleSubmit = async (e) => {
             </label>
             <input
               type="email"
-              placeholder="you@example.com"
-              className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500"
               value={form.email}
               onChange={(e) =>
                 setForm({ ...form, email: e.target.value })
@@ -101,8 +109,7 @@ const handleSubmit = async (e) => {
             </label>
             <input
               type="password"
-              placeholder="••••••••"
-              className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500"
               value={form.password}
               onChange={(e) =>
                 setForm({ ...form, password: e.target.value })
@@ -113,7 +120,7 @@ const handleSubmit = async (e) => {
           <button
             type="submit"
             disabled={loading}
-            className={`w-full py-2 rounded-lg font-semibold text-white transition ${
+            className={`w-full py-2 rounded-lg font-semibold text-white ${
               loading
                 ? "bg-gray-400 cursor-not-allowed"
                 : "bg-indigo-600 hover:bg-indigo-700"

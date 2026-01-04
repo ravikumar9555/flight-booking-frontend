@@ -8,5 +8,21 @@ const API = axios.create({
 });
 
 export const registerUser = (data) => {
-  return API.post("/signup", data);
+  return API.post("/signup", data, {
+    validateStatus: () => true,
+  });
+};
+
+export const loginUser = (data) => {
+  return API.post("/signin", data, {
+    validateStatus: () => true,
+  });
+};
+export const checkIsAdmin = (userId) => {
+  return API.get("/isAdmin", {
+    params: { id: userId },
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("token")}`,
+    },
+  });
 };

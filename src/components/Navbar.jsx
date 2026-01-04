@@ -1,17 +1,17 @@
-
 import { Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 export default function Navbar() {
-  const token = localStorage.getItem("token");
+  const { token, logout } = useAuth();
 
   return (
     <nav className="bg-white shadow-md px-6 py-4 flex justify-between items-center">
-      {/* LEFT SIDE: LOGO / NAME */}
+      {/* LOGO */}
       <Link to="/" className="text-2xl font-bold text-blue-600">
         ✈️ AirLine Booking
       </Link>
 
-      {/* RIGHT SIDE: AUTH BUTTONS */}
+      {/* AUTH ACTIONS */}
       <div className="space-x-4">
         {!token ? (
           <>
@@ -30,12 +30,12 @@ export default function Navbar() {
             </Link>
           </>
         ) : (
-          <Link
-            to="/admin"
-            className="text-gray-600 hover:text-blue-600"
+          <button
+            onClick={logout}
+            className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
           >
-            Dashboard
-          </Link>
+            Logout
+          </button>
         )}
       </div>
     </nav>

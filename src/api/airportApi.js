@@ -5,3 +5,8 @@ export const getAirports = (cityId) => {
     params: { cityId },
   });
 };
+
+
+export const getAllAirports = () => {
+  return API.get("/airports");
+};

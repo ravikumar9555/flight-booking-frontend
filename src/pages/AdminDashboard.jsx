@@ -1,117 +1,67 @@
 import { useState } from "react";
+import FlightsAdmin from "./admin/FlightsAdmin";
+import UsersAdmin from "./admin/UsersAdmin";
+import AirplanesAdmin from "./admin/AirplanesAdmin";
+import AirportsAdmin from "./admin/AirportsAdmin";
 
 export default function AdminDashboard() {
-  const [form, setForm] = useState({
-    airline: "",
-    source: "",
-    destination: "",
-    departureTime: "",
-    price: "",
-  });
+  const [activeTab, setActiveTab] = useState("flights");
 
-  const [flights] = useState([
-    {
-      _id: "1",
-      airline: "IndiGo",
-      source: "Delhi",
-      destination: "Mumbai",
-      departureTime: "2026-01-05 10:30",
-      price: 4500,
-    },
-    {
-      _id: "2",
-      airline: "Air India",
-      source: "Bangalore",
-      destination: "Chennai",
-      departureTime: "2026-01-06 14:00",
-      price: 3200,
-    },
-  ]);
+  const tabs = [
+    { key: "flights", label: "Flights", icon: "✈️" },
+    { key: "users", label: "Users", icon: "👤" },
+    { key: "airplanes", label: "Airplanes", icon: "🛩️" },
+    { key: "airports", label: "Airports", icon: "🏢" },
+  ];
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
-      <h1 className="text-3xl font-bold mb-6">
-        Admin Dashboard ✈️
-      </h1>
+    <div className="min-h-screen bg-gray-100 flex">
 
-      <div className="bg-white rounded shadow p-6 mb-8">
-        <h2 className="text-xl font-semibold mb-4">
-          Add New Flight (Dummy)
+      {/* 🔹 LEFT SIDEBAR */}
+      <aside className="w-64 bg-white shadow-lg p-6">
+
+        {/* SIDEBAR HEADER */}
+        <h2 className="text-2xl font-bold text-blue-600 mb-8">
+          Admin Panel
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <input
-            className="border p-2 rounded"
-            placeholder="Airline"
-            value={form.airline}
-            onChange={(e) =>
-              setForm({ ...form, airline: e.target.value })
-            }
-          />
-          <input
-            className="border p-2 rounded"
-            placeholder="Source"
-            value={form.source}
-            onChange={(e) =>
-              setForm({ ...form, source: e.target.value })
-            }
-          />
-          <input
-            className="border p-2 rounded"
-            placeholder="Destination"
-            value={form.destination}
-            onChange={(e) =>
-              setForm({ ...form, destination: e.target.value })
-            }
-          />
-          <input
-            className="border p-2 rounded"
-            placeholder="Price"
-            value={form.price}
-            onChange={(e) =>
-              setForm({ ...form, price: e.target.value })
-            }
-          />
+        {/* SIDEBAR MENU */}
+        <nav className="space-y-3">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition
+                ${
+                  activeTab === tab.key
+                    ? "bg-blue-600 text-white"
+                    : "text-gray-700 hover:bg-gray-100"
+                }`}
+            >
+              <span className="text-xl">{tab.icon}</span>
+              <span className="font-medium">{tab.label}</span>
+            </button>
+          ))}
+        </nav>
+      </aside>
 
-          <button
-            type="button"
-            className="md:col-span-3 bg-blue-600 text-white py-2 rounded cursor-not-allowed"
-          >
-            Add Flight
-          </button>
+      {/* 🔹 MAIN CONTENT */}
+      <main className="flex-1 p-8">
+
+        {/* PAGE TITLE */}
+        <h1 className="text-3xl font-bold text-gray-800 mb-6">
+          {tabs.find((t) => t.key === activeTab)?.label}
+        </h1>
+
+        {/* CONTENT CARD */}
+        <div className="bg-white rounded-xl shadow p-6">
+          {activeTab === "flights" && <FlightsAdmin />}
+          {activeTab === "users" && <UsersAdmin />}
+          {activeTab === "airplanes" && <AirplanesAdmin />}
+          {activeTab === "airports" && <AirportsAdmin />}
         </div>
-      </div>
 
-      <div className="bg-white rounded shadow p-6">
-        <h2 className="text-xl font-semibold mb-4">
-          Flights List
-        </h2>
-
-        <table className="w-full">
-          <thead className="bg-gray-200">
-            <tr>
-              <th className="p-3 text-left">Airline</th>
-              <th className="p-3 text-left">Route</th>
-              <th className="p-3 text-left">Departure</th>
-              <th className="p-3 text-left">Price</th>
-            </tr>
-          </thead>
-          <tbody>
-            {flights.map((f) => (
-              <tr key={f._id} className="border-t">
-                <td className="p-3">{f.airline}</td>
-                <td className="p-3">
-                  {f.source} → {f.destination}
-                </td>
-                <td className="p-3">{f.departureTime}</td>
-                <td className="p-3 font-semibold">
-                  ₹{f.price}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      </main>
     </div>
   );
 }

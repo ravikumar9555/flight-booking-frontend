@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
-import { getCities } from "../api/cityApi";
-import { getAllFlights } from "../api/flightApi";
+import { getCities } from "../../api/cityApi";
+import { getAirports } from "../../api/airportApi";
+import { getAllFlights } from "../../api/flightApi";
 
 export default function SearchFlights() {
   const [cities, setCities] = useState([]);
+  const [airports, setAirports] = useState([]);
+  const [cityMap, setCityMap] = useState({});
   const [flights, setFlights] = useState([]);
-const [filteredFlights, setFilteredFlights] = useState([]);
+
   const [filters, setFilters] = useState({
     fromCityId: "",
     toCityId: "",
@@ -18,31 +21,38 @@ const [filteredFlights, setFilteredFlights] = useState([]);
   }, []);
 
   const loadInitialData = async () => {
-    const cityRes = await getCities();
-    console.log(cityRes);
-    setCities(cityRes.data.data);
+    try {
+      // 1️⃣ Fetch Cities
+      const cityRes = await getCities();
+      const citiesData = cityRes.data.data;
+      setCities(citiesData);
 
-    const flightRes = await getAllFlights();
-    console.log(flightRes)
-    setFlights(flightRes.data.data);
-    console.log(flightRes.data.data)
+      // cityId → cityName
+      const cityLookup = {};
+      citiesData.forEach((c) => {
+        cityLookup[c.id] = c.name;
+      });
+
+      // 2️⃣ Fetch Airports
+      const airportRes = await getAirports();
+      const airportsData = airportRes.data.data;
+      setAirports(airportsData);
+
+      // airportId → cityName
+      const airportCityMap = {};
+      airportsData.forEach((a) => {
+        airportCityMap[a.id] = cityLookup[a.cityId];
+      });
+      setCityMap(airportCityMap);
+
+      // 3️⃣ Fetch Flights
+      const flightRes = await getAllFlights();
+      setFlights(flightRes.data.data);
+
+    } catch (err) {
+      console.error(err);
+    }
   };
-
-const handleSearch = async () => {
-  try {
-    const res = await getAllFlights({
-      fromCityId: filters.fromCityId,
-      toCityId: filters.toCityId,
-      date: filters.date,
-      passengers: filters.passengers,
-    });
-
-    setFilteredFlights(res.data.data);
-  } catch (err) {
-    console.error("Search failed", err);
-  }
-};
-
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-gray-100">
@@ -51,9 +61,8 @@ const handleSearch = async () => {
       <div className="bg-white shadow-lg rounded-b-3xl px-6 py-8 sticky top-0 z-10">
         <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-5 gap-4">
 
-          {/* FROM CITY */}
           <select
-            className="border rounded-full px-4 py-3 focus:ring-2 focus:ring-blue-500"
+            className="border rounded-full px-4 py-3"
             value={filters.fromCityId}
             onChange={(e) =>
               setFilters({ ...filters, fromCityId: e.target.value })
@@ -67,9 +76,8 @@ const handleSearch = async () => {
             ))}
           </select>
 
-          {/* TO CITY */}
           <select
-            className="border rounded-full px-4 py-3 focus:ring-2 focus:ring-blue-500"
+            className="border rounded-full px-4 py-3"
             value={filters.toCityId}
             onChange={(e) =>
               setFilters({ ...filters, toCityId: e.target.value })
@@ -83,7 +91,6 @@ const handleSearch = async () => {
             ))}
           </select>
 
-          {/* DATE */}
           <input
             type="date"
             className="border rounded-full px-4 py-3"
@@ -93,29 +100,23 @@ const handleSearch = async () => {
             }
           />
 
-          {/* PASSENGERS */}
-         <input
-  type="number"
-  min="1"
-  placeholder="Passengers"
-  className="border rounded-full px-4 py-3 focus:ring-2 focus:ring-blue-500"
-  value={filters.passengers}
-  onChange={(e) =>
-    setFilters({ ...filters, passengers: Number(e.target.value) })
-  }
-/>
+          <input
+            type="number"
+            min="1"
+            className="border rounded-full px-4 py-3"
+            value={filters.passengers}
+            onChange={(e) =>
+              setFilters({ ...filters, passengers: Number(e.target.value) })
+            }
+          />
 
-          {/* SEARCH */}
-          <button
-            onClick={handleSearch}
-            className="bg-blue-600 text-white rounded-full py-3 font-semibold hover:bg-blue-700 transition"
-          >
+          <button className="bg-blue-600 text-white rounded-full py-3 font-semibold hover:bg-blue-700">
             Search
           </button>
         </div>
       </div>
 
-      {/* FLIGHTS LIST */}
+      {/* FLIGHT LIST */}
       <div className="max-w-6xl mx-auto px-6 py-10 space-y-4">
         {flights.map((f) => (
           <div
@@ -126,11 +127,17 @@ const handleSearch = async () => {
               <p className="font-semibold text-lg">
                 Flight {f.flightNumber}
               </p>
+
               <p className="text-sm text-gray-500">
                 {new Date(f.departureTime).toLocaleTimeString()} →
                 {new Date(f.arrivalTime).toLocaleTimeString()}
               </p>
-              
+
+              {/* ✅ CITY NAMES */}
+              <p className="text-sm font-medium text-gray-700">
+                {cityMap[f.departureAirportId]} →{" "}
+                {cityMap[f.arrivalAirportId]}
+              </p>
             </div>
 
             <div className="text-right">

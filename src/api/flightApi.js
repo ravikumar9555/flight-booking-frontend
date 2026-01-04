@@ -8,3 +8,9 @@ export const getAllFlights = () => {
 export const searchFlights = (params) => {
   return API.get("/flights", { params });
 };
+
+// CREATE FLIGHT
+export const createFlight = (data) => {
+  return API.post("/flights", data);
+};
+

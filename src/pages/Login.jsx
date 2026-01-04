@@ -28,6 +28,7 @@ export default function Login() {
   setError("");
 
   try {
+    // 1️⃣ LOGIN API
     const response = await loginUser({
       email: form.email,
       password: form.password,
@@ -38,21 +39,24 @@ export default function Login() {
       return;
     }
 
-    // 1️⃣ TOKEN
+    // 2️⃣ TOKEN
     const token = response.data.data;
 
-    // 2️⃣ SAVE TOKEN
-    await login(token);
-
-    // 3️⃣ DECODE JWT
+    // 3️⃣ DECODE JWT → GET USER ID
     const decoded = jwtDecode(token);
     console.log("DECODED JWT 👉", decoded);
 
-    // 4️⃣ CHECK ROLE
-    const res = await checkIsAdmin(decoded.id);
-    console.log("ROLE RESPONSE 👉", res.data);
+    // 4️⃣ FETCH ROLE FROM BACKEND
+    const roleRes = await checkIsAdmin(decoded.id);
+    const role = roleRes.data.data; // "ADMIN" or "CUSTOMER"
 
-    if (res.data.success && res.data.data === "ADMIN") {
+    console.log("ROLE 👉", role);
+
+    // 🔥 5️⃣ SAVE TOKEN + ROLE TO CONTEXT
+    login(token, role);
+
+    // 6️⃣ REDIRECT BASED ON ROLE
+    if (role === "ADMIN") {
       navigate("/admin", { replace: true });
     } else {
       navigate("/customer", { replace: true });

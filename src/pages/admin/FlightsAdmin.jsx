@@ -1,155 +1,274 @@
 import { useEffect, useState } from "react";
-import { getCities } from "../../api/cityApi";
+import { getAllFlights, createFlight } from "../../api/flightApi";
+import { getAirplanes } from "../../api/airplaneApi";
 import { getAirports } from "../../api/airportApi";
-import { getAllFlights } from "../../api/flightApi";
+import { getCities } from "../../api/cityApi";
 
-export default function SearchFlights() {
-  const [cities, setCities] = useState([]);
-  const [airports, setAirports] = useState([]);
-  const [cityMap, setCityMap] = useState({});
+export default function FlightsAdmin() {
   const [flights, setFlights] = useState([]);
+  const [airplanes, setAirplanes] = useState([]);
+  const [airports, setAirports] = useState([]);
+  const [cities, setCities] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const [filters, setFilters] = useState({
-    fromCityId: "",
-    toCityId: "",
-    date: "",
-    passengers: 1,
+  // 🔹 Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 3;
+
+  const [form, setForm] = useState({
+    flightNumber: "",
+    airplaneId: "",
+    departureAirportId: "",
+    arrivalAirportId: "",
+    departureTime: "",
+    arrivalTime: "",
+    price: ""
   });
 
   useEffect(() => {
-    loadInitialData();
+    loadData();
   }, []);
 
-  const loadInitialData = async () => {
+  const loadData = async () => {
     try {
-      // 1️⃣ Fetch Cities
-      const cityRes = await getCities();
-      const citiesData = cityRes.data.data;
-      setCities(citiesData);
+      const [flightRes, airplaneRes, airportRes, cityRes] =
+        await Promise.all([
+          getAllFlights(),
+          getAirplanes(),
+          getAirports(),
+          getCities()
+        ]);
 
-      // cityId → cityName
-      const cityLookup = {};
-      citiesData.forEach((c) => {
-        cityLookup[c.id] = c.name;
-      });
-
-      // 2️⃣ Fetch Airports
-      const airportRes = await getAirports();
-      const airportsData = airportRes.data.data;
-      setAirports(airportsData);
-
-      // airportId → cityName
-      const airportCityMap = {};
-      airportsData.forEach((a) => {
-        airportCityMap[a.id] = cityLookup[a.cityId];
-      });
-      setCityMap(airportCityMap);
-
-      // 3️⃣ Fetch Flights
-      const flightRes = await getAllFlights();
       setFlights(flightRes.data.data);
-
+      setAirplanes(airplaneRes.data.data);
+      setAirports(airportRes.data.data);
+      setCities(cityRes.data.data);
     } catch (err) {
       console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
 
+  // 🔹 Maps
+  const cityMap = Object.fromEntries(cities.map(c => [c.id, c.name]));
+  const airportMap = Object.fromEntries(
+    airports.map(a => [
+      a.id,
+      `${a.name} (${cityMap[a.cityId] || "Unknown"})`
+    ])
+  );
+  const airplaneMap = Object.fromEntries(
+    airplanes.map(a => [a.id, a])
+  );
+
+  // 🔹 Pagination logic
+  const totalPages = Math.ceil(flights.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedFlights = flights.slice(
+    startIndex,
+    startIndex + itemsPerPage
+  );
+
+  // 🔹 Create Flight
+  const handleCreateFlight = async () => {
+    try {
+      const airplane = airplaneMap[form.airplaneId];
+      if (!airplane) return alert("Select airplane");
+
+      await createFlight({
+        flightNumber: form.flightNumber,
+        airplaneId: Number(form.airplaneId),
+        departureAirportId: Number(form.departureAirportId),
+        arrivalAirportId: Number(form.arrivalAirportId),
+        departureTime: form.departureTime,
+        arrivalTime: form.arrivalTime,
+        price: Number(form.price),
+        totalSeats: airplane.capacity // 🔥 AUTO
+      });
+
+      alert("Flight created");
+      setForm({
+        flightNumber: "",
+        airplaneId: "",
+        departureAirportId: "",
+        arrivalAirportId: "",
+        departureTime: "",
+        arrivalTime: "",
+        price: ""
+      });
+
+      loadData();
+      setCurrentPage(1);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to create flight");
+    }
+  };
+
+  if (loading) return <p>Loading flights...</p>;
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-gray-100">
+    <div className="space-y-10">
 
-      {/* SEARCH BAR */}
-      <div className="bg-white shadow-lg rounded-b-3xl px-6 py-8 sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-5 gap-4">
+      {/* ADD FLIGHT */}
+      <div className="bg-white rounded-2xl shadow p-6">
+        <h2 className="text-xl font-bold mb-4">➕ Add Flight</h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <input
+            placeholder="Flight Number"
+            className="border p-2 rounded"
+            value={form.flightNumber}
+            onChange={(e) =>
+              setForm({ ...form, flightNumber: e.target.value })
+            }
+          />
 
           <select
-            className="border rounded-full px-4 py-3"
-            value={filters.fromCityId}
+            className="border p-2 rounded"
+            value={form.airplaneId}
             onChange={(e) =>
-              setFilters({ ...filters, fromCityId: e.target.value })
+              setForm({ ...form, airplaneId: e.target.value })
             }
           >
-            <option value="">From City</option>
-            {cities.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
+            <option value="">Select Airplane</option>
+            {airplanes.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.modelNumber} ({a.capacity} seats)
               </option>
             ))}
           </select>
 
           <select
-            className="border rounded-full px-4 py-3"
-            value={filters.toCityId}
+            className="border p-2 rounded"
+            value={form.departureAirportId}
             onChange={(e) =>
-              setFilters({ ...filters, toCityId: e.target.value })
+              setForm({ ...form, departureAirportId: e.target.value })
             }
           >
-            <option value="">To City</option>
-            {cities.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
+            <option value="">Departure Airport</option>
+            {airports.map((a) => (
+              <option key={a.id} value={a.id}>
+                {airportMap[a.id]}
+              </option>
+            ))}
+          </select>
+
+          <select
+            className="border p-2 rounded"
+            value={form.arrivalAirportId}
+            onChange={(e) =>
+              setForm({ ...form, arrivalAirportId: e.target.value })
+            }
+          >
+            <option value="">Arrival Airport</option>
+            {airports.map((a) => (
+              <option key={a.id} value={a.id}>
+                {airportMap[a.id]}
               </option>
             ))}
           </select>
 
           <input
-            type="date"
-            className="border rounded-full px-4 py-3"
-            value={filters.date}
+            type="datetime-local"
+            className="border p-2 rounded"
+            value={form.departureTime}
             onChange={(e) =>
-              setFilters({ ...filters, date: e.target.value })
+              setForm({ ...form, departureTime: e.target.value })
             }
           />
 
           <input
-            type="number"
-            min="1"
-            className="border rounded-full px-4 py-3"
-            value={filters.passengers}
+            type="datetime-local"
+            className="border p-2 rounded"
+            value={form.arrivalTime}
             onChange={(e) =>
-              setFilters({ ...filters, passengers: Number(e.target.value) })
+              setForm({ ...form, arrivalTime: e.target.value })
             }
           />
 
-          <button className="bg-blue-600 text-white rounded-full py-3 font-semibold hover:bg-blue-700">
-            Search
+          <input
+            placeholder="Price"
+            className="border p-2 rounded"
+            value={form.price}
+            onChange={(e) =>
+              setForm({ ...form, price: e.target.value })
+            }
+          />
+
+          <button
+            onClick={handleCreateFlight}
+            className="md:col-span-3 bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+          >
+            Add Flight
           </button>
         </div>
       </div>
 
       {/* FLIGHT LIST */}
-      <div className="max-w-6xl mx-auto px-6 py-10 space-y-4">
-        {flights.map((f) => (
-          <div
-            key={f.id}
-            className="bg-white rounded-2xl shadow-md p-6 flex justify-between items-center"
+      <div className="bg-white rounded-2xl shadow p-6">
+        <h2 className="text-xl font-bold mb-4">✈️ Flights</h2>
+
+        <div className="space-y-4">
+          {paginatedFlights.map((f) => (
+            <div
+              key={f.id}
+              className="border rounded-xl p-4 flex justify-between items-center"
+            >
+              <div>
+                <p className="font-semibold">{f.flightNumber}</p>
+                <p className="text-sm text-gray-500">
+                  {new Date(f.departureTime).toLocaleString()} →
+                  {new Date(f.arrivalTime).toLocaleString()}
+                </p>
+                <p className="text-sm">
+                  {airportMap[f.departureAirportId]} →{" "}
+                  {airportMap[f.arrivalAirportId]}
+                </p>
+              </div>
+
+              <div className="text-right">
+                <p className="font-bold text-lg">₹{f.price}</p>
+                <p className="text-sm text-gray-500">
+                  Seats: {f.totalSeats}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* PAGINATION */}
+        <div className="flex justify-between items-center mt-6">
+          <button
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage(p => p - 1)}
+            className={`px-4 py-2 rounded ${
+              currentPage === 1
+                ? "bg-gray-300 cursor-not-allowed"
+                : "bg-blue-600 text-white"
+            }`}
           >
-            <div>
-              <p className="font-semibold text-lg">
-                Flight {f.flightNumber}
-              </p>
+            Previous
+          </button>
 
-              <p className="text-sm text-gray-500">
-                {new Date(f.departureTime).toLocaleTimeString()} →
-                {new Date(f.arrivalTime).toLocaleTimeString()}
-              </p>
+          <span className="text-gray-600">
+            Page {currentPage} of {totalPages}
+          </span>
 
-              {/* ✅ CITY NAMES */}
-              <p className="text-sm font-medium text-gray-700">
-                {cityMap[f.departureAirportId]} →{" "}
-                {cityMap[f.arrivalAirportId]}
-              </p>
-            </div>
-
-            <div className="text-right">
-              <p className="text-2xl font-bold">₹{f.price}</p>
-              <button className="mt-2 bg-green-600 text-white px-4 py-2 rounded-full hover:bg-green-700">
-                Book
-              </button>
-            </div>
-          </div>
-        ))}
+          <button
+            disabled={currentPage === totalPages}
+            onClick={() => setCurrentPage(p => p + 1)}
+            className={`px-4 py-2 rounded ${
+              currentPage === totalPages
+                ? "bg-gray-300 cursor-not-allowed"
+                : "bg-blue-600 text-white"
+            }`}
+          >
+            Next
+          </button>
+        </div>
       </div>
-
     </div>
   );
 }

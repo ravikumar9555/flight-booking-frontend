@@ -1,9 +1,6 @@
 // src/api/flightApi.js
 import API from "./flightAxios";
 
-export const getAllFlights = (filters) => {
-  return API.get("/flights");
-};
 
 
 // CREATE FLIGHT
@@ -19,5 +16,11 @@ export const searchFlights = (filters) => {
       date: filters.date || undefined,
       minSeats: filters.passengers || undefined,
     }
+  });
+};
+
+export const getAllFlights = (params = {}) => {
+  return API.get("/flights", {
+    params, // ✅ THIS IS THE FIX
   });
 };
